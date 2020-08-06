@@ -245,24 +245,25 @@ app.get('/api/fetchMonthYear',async(req,res) => {
     res.send(data);
 })
 
-app.get('/api/fetchTransactionDetails',async(req,res) => {
-    const data = await query_execute(`select * from projects`);
-    console.log(data);
-    res.send(data);
-})
-
 app.get('/api/fetchProjectDetails',async(req,res) => {
-    const data = await query_execute('select * from projects');
+    const data = await query_execute("select * from projects");
     res.send(data);
 })
 
 app.get('/api/fetchResourceDetails',async(req,res)=> {
-    const data = await query_execute(`select distinct * from resources order by Resource_Name`);
+    const Released = "Released";
+    const data = await query_execute("select distinct * from resources where shore != ? order by Resource_Name",Released);
     console.log(data);
     res.send(data);
 
 });
 
+app.get('/api/fetchConfigDetails',async(req,res)=> {
+    const data = await query_execute(`select distinct config_ID,config_key,config_value from configuration_table`);
+    //console.log(data);
+    res.send(data);
+
+});
 
 app.post("/api/resourceTimeSheet", (req, res) => {
     console.log("post Request", req.body);
@@ -294,6 +295,8 @@ app.post("/api/resourceTimeSheet", (req, res) => {
     })
     console.log(newObjArr);
     newObjArr.map(async (data) => {
+        let actualHours =  data.Actual_Hours === undefined ? 0 : data.Actual_Hours;
+        console.log("actualHours : "+ actualHours);
         query_execute(" select count(*) as totalsize  from capacity_demand where Resource_ID = '" + data.Resource_ID + "' and Week_ID = '" + data.Week_ID + "' and Project_Code = '" + data.Project_Code + "'")
             .then(function (rows) {
                 console.log(rows);
@@ -309,7 +312,7 @@ app.post("/api/resourceTimeSheet", (req, res) => {
                 } else {
                     //console.log("dateFormat : "+ data.created_at);
 
-                    query_execute("update capacity_demand SET Planned_Hours = '" + data.Planned_Hours + "', Actual_Hours = '" + data.Actual_Hours + "', modified_at = '" + dateFormated + "', modified_by = '" + data.Resource_Name + "' where Resource_ID = '" + data.Resource_ID + "' and Week_ID = '" + data.Week_ID + "' and Project_Code = '" + data.Project_Code + "'").then(function (rows) {
+                    query_execute("update capacity_demand SET Planned_Hours = '" + data.Planned_Hours + "', Actual_Hours = '" + actualHours + "', modified_at = '" + dateFormated + "', modified_by = '" + data.Resource_Name + "' where Resource_ID = '" + data.Resource_ID + "' and Week_ID = '" + data.Week_ID + "' and Project_Code = '" + data.Project_Code + "'").then(function (rows) {
                         console.log("Update the details sucessfully : " + data.Project_Code);
                     })
                         .catch(error => {
@@ -318,7 +321,7 @@ app.post("/api/resourceTimeSheet", (req, res) => {
                 }
             });
     });
-    res.status(201).json(newObjArr);
+        res.status(201).json({status:200,message:'Record Inserted Successfully'});
 });
 
 app.post("/api/fetchAssignedProject", (req, res) => {
@@ -326,7 +329,7 @@ app.post("/api/fetchAssignedProject", (req, res) => {
     const resID = req.body.idSelection.resourceID;
     const weekId = req.body.idSelection.weekID;
     const year = req.body.idSelection.year;
-    query_execute("select Project_Code,Project_Name,Planned_Hours from capacity_demand where Resource_ID = '" + resID + "' and Week_ID = '" + weekId + "' and Year = '" + year + "'").then(function (rows) {
+    query_execute("select Project_Code,Project_Name,Planned_Hours,Actual_Hours from capacity_demand where Resource_ID = '" + resID + "' and Week_ID = '" + weekId + "' and Year = '" + year + "'").then(function (rows) {
         // console.log(rows);
         res.json(rows);
         console.log("Fetcting Manager Assignee Projects based on  resource : " + resID + "and week : " + weekId + " year : " + year);
